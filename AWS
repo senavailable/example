@@ -63,3 +63,64 @@ for volume in ec2.volumes.all():
       print ("Deleted snapshot " + snapshot[0].id)
       snapshot[0].delete()
 
+
+###bastion-open
+
+IP=`curl -s checkip.amazonaws.com`
+aws ec2 authorize-security-group-ingress --group-name "Bastion" --protocol tcp --port 22 --cidr $IP/32
+
+
+####bastion-close.py
+
+#!/usr/bin/env python
+
+import boto3
+
+GROUP_NAME = "Bastion"
+
+# Connect to the Amazon EC2 service
+ec2 = boto3.resource('ec2')
+
+# Retrieve the security group
+security_groups = ec2.security_groups.filter(GroupNames=[GROUP_NAME])
+
+# Delete all rules in the group
+for group in security_groups:
+    group.revoke_ingress(IpPermissions = group.ip_permissions)
+
+
+
+####stopinator.py
+
+
+#!/usr/bin/env python
+
+import boto3
+
+# Connect to the Amazon EC2 service
+ec2 = boto3.resource('ec2')
+
+# Loop through each instance
+for instance in ec2.instances.all():
+  state = instance.state['Name']
+  for tag in instance.tags:
+
+    # Check for the 'stopinator' tag
+    if tag['Key'] == 'stopinator':
+      action = tag['Value'].lower()
+
+      # Stop?
+      if action == 'stop' and state == 'running':
+        print "Stopping instance", instance.id
+        instance.stop()
+
+      # Terminate?
+      elif action == 'terminate' and state != 'terminated':
+        print "Terminating instance", instance.id
+        instance.terminate()
+
+
+
+
+
+
